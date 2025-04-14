@@ -16,9 +16,16 @@ width, height = 800, 600
 # Obstáculos
 obstacles = []
 obstacle_width = 0.1
-obstacle_gap = 0.4
+
+# TODO - Tentar ir diminuindo o espaço para o esquilo passar conforme o tempo que vai passando
+obstacle_gap = 0.6
 
 OBSTACLE_MAX_MIN_HEIGHT = 0.5
+
+# Variavel usada para começar o jogo, monitora quando é o primeiro clique no espaço do usuário
+iniciarJogo = False
+
+
 
 
 def init_window(width, height, title):
@@ -36,8 +43,10 @@ def init_window(width, height, title):
 
 
 def process_input(window):
-    global velocidade, altura
+    global velocidade, altura, iniciarJogo
     if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
+        if not iniciarJogo:
+            iniciarJogo = True
         velocidade = FORCA_PULO
 
 
@@ -131,8 +140,10 @@ def main():
         delta_time = min(delta_time, 0.05)
 
         process_input(window)
-        update_character(delta_time)
-        update_obstacles()
+        if(iniciarJogo):
+            update_character(delta_time)
+            update_obstacles()
+
         draw_obstacles()
         draw_character()
 
