@@ -23,7 +23,7 @@ obstacle_gap = 0.6
 OBSTACLE_MAX_MIN_HEIGHT = 0.5
 
 # Variavel usada para começar o jogo, monitora quando é o primeiro clique no espaço do usuário
-iniciarJogo = False
+iniciar_jogo = False
 
 
 
@@ -43,10 +43,10 @@ def init_window(width, height, title):
 
 
 def process_input(window):
-    global velocidade, altura, iniciarJogo
+    global velocidade, altura, iniciar_jogo
     if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
-        if not iniciarJogo:
-            iniciarJogo = True
+        if not iniciar_jogo:
+            iniciar_jogo = True
         velocidade = FORCA_PULO
 
 
@@ -140,7 +140,7 @@ def main():
         delta_time = min(delta_time, 0.05)
 
         process_input(window)
-        if(iniciarJogo):
+        if(iniciar_jogo):
             update_character(delta_time)
             update_obstacles()
 
