@@ -25,8 +25,7 @@ OBSTACLE_MAX_MIN_HEIGHT = 0.5
 # Variavel usada para começar o jogo, monitora quando é o primeiro clique no espaço do usuário
 iniciar_jogo = False
 
-
-
+contador_pontos = 0
 
 def init_window(width, height, title):
     if not glfw.init():
@@ -65,13 +64,13 @@ def draw_character():
     glVertex2f(-0.05, 0.05 + altura)
     glEnd()
 
-
 def create_obstacle():
     gap_position = random.uniform(-OBSTACLE_MAX_MIN_HEIGHT, OBSTACLE_MAX_MIN_HEIGHT)
     obstacle = {
         'x': 1.0,  # Inicia à direita da tela
         'gap_position': gap_position,
-        'passed': False
+        'passed': False,
+        'counted': False
     }
     obstacles.append(obstacle)
 
@@ -107,7 +106,7 @@ def update_obstacles():
 
 
 def check_collision():
-    global altura
+    global altura,contador_pontos
     if altura < -1.1:
         return True
 
@@ -117,13 +116,12 @@ def check_collision():
                 return True
             else:
                 obstacle['passed'] = True
+                if not obstacle['counted']:
+                    obstacle['counted'] = True
+                    contador_pontos += 1
+                    print(f'{contador_pontos}')
+
     return False
-
-
-def count_passed():
-    print(sum(1 for o in obstacles if o['passed']))
-
-
 
 def main():
     window = init_window(width, height, "Flappy Bird")
@@ -150,8 +148,6 @@ def main():
         if check_collision():
             print("Game Over!")
             glfw.set_window_should_close(window, True)
-
-        count_passed()
 
         glfw.swap_buffers(window)
         glfw.poll_events()
