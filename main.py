@@ -9,6 +9,7 @@ import numpy as np
 gravidade = -9.8
 velocidade = 0.0
 altura = 0.0
+velocidade_obstaculos = 0.01
 
 FORCA_PULO = 1.5
 
@@ -96,9 +97,9 @@ def draw_obstacles():
 
 
 def update_obstacles():
-    global obstacles
+    global obstacles, velocidade_obstaculos
     for obstacle in obstacles:
-        obstacle['x'] -= 0.01
+        obstacle['x'] -= velocidade_obstaculos
 
         if obstacle['x'] < -1.0 - obstacle_width:
             obstacles.remove(obstacle)
@@ -108,7 +109,7 @@ def update_obstacles():
 
 
 def check_collision():
-    global altura,contador_pontos
+    global altura,contador_pontos, velocidade_obstaculos
     if altura < -1.1:
         return True
 
@@ -122,6 +123,7 @@ def check_collision():
                     obstacle['counted'] = True
                     contador_pontos += 1
                     print(f'{contador_pontos}')
+                    print(velocidade_obstaculos)
 
     return False
 
@@ -161,6 +163,10 @@ def draw_textured_quad(tex_id, width, height):
 
     glDisable(GL_TEXTURE_2D)
 
+def update_difficulty():
+    global velocidade_obstaculos, obstacle_gap, contador_pontos
+    velocidade_obstaculos =  (((contador_pontos / 20) + 1)  * 0.01)
+
 def main():
     global contador_pontos
     window = init_window(width, height, "Flappy Bird")
@@ -181,6 +187,7 @@ def main():
         if(iniciar_jogo):
             update_character(delta_time)
             update_obstacles()
+            update_difficulty()
 
         draw_obstacles()
         draw_character()
