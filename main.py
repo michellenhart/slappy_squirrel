@@ -38,8 +38,11 @@ OBSTACLE_MAX_MIN_HEIGHT = 0.5
 # Variavel usada para começar o jogo, monitora quando é o primeiro clique no espaço do usuário
 iniciar_jogo = False
 reiniciar_jogo = False
+game_over = False
 
 contador_pontos = 0
+vidas = 5
+
 
 def init_window(width, height, title):
     if not glfw.init():
@@ -56,18 +59,23 @@ def init_window(width, height, title):
 
 
 def process_input(window):
-    # TODO - Revisar problema quando morre mas ainda deixa fica pulando.
-    global velocidade, altura, iniciar_jogo, reiniciar_jogo
+    global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over
+
     if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
-        if not iniciar_jogo:
+        if not iniciar_jogo and not reiniciar_jogo and not game_over:
             iniciar_jogo = True
-        velocidade = FORCA_PULO
+        elif iniciar_jogo:
+            velocidade = FORCA_PULO
+
     if glfw.get_key(window, glfw.KEY_ESCAPE) == glfw.PRESS:
         if iniciar_jogo:
             iniciar_jogo = False
+
     if glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS:
-        if not reiniciar_jogo and not iniciar_jogo:
-            reiniciar_jogo = True
+        if game_over:
+            restart_game(full_reset=True)
+
+
 
 def update_character(delta_time):
     global velocidade, altura
@@ -83,6 +91,7 @@ def draw_character():
     glVertex2f(0.05, 0.05 + altura)
     glVertex2f(-0.05, 0.05 + altura)
     glEnd()
+
 
 def create_obstacle():
     gap_position = random.uniform(-OBSTACLE_MAX_MIN_HEIGHT, OBSTACLE_MAX_MIN_HEIGHT)
@@ -126,25 +135,35 @@ def update_obstacles():
 
 
 def check_collision():
-    global altura,contador_pontos, velocidade_obstaculos
+    global altura, contador_pontos, velocidade_obstaculos, vidas, reiniciar_jogo, game_over
+
     if altura < -1.1:
+        vidas -= 1
+        if vidas <= 0:
+            game_over = True
+        else:
+            reiniciar_jogo = True
         return True
 
     for obstacle in obstacles:
         if -0.1 < obstacle['x'] < 0.1:
-            if altura - 0.05 < obstacle['gap_position'] - obstacle_gap / 2 or altura + 0.05  > obstacle['gap_position'] + obstacle_gap / 2:
+            if (altura - 0.05 < obstacle['gap_position'] - obstacle_gap / 2 or
+                    altura + 0.05 > obstacle['gap_position'] + obstacle_gap / 2):
+                vidas -= 1
+                if vidas <= 0:
+                    game_over = True
+                else:
+                    reiniciar_jogo = True
                 return True
             else:
-                obstacle['passed'] = True
                 if not obstacle['counted']:
                     obstacle['counted'] = True
                     contador_pontos += 1
-                    print(f'{contador_pontos}')
-                    print(velocidade_obstaculos)
-
     return False
 
+
 font = ImageFont.truetype("verdana.ttf", 32)  # Use uma fonte .ttf disponível no seu sistema
+
 
 def create_text_texture(text):
     img = Image.new("RGBA", (512, 128), (0, 0, 0, 0))
@@ -160,6 +179,7 @@ def create_text_texture(text):
                  0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
     return texture_id, img.width, img.height
 
+
 def draw_textured_quad(tex_id, width, height):
     glBindTexture(GL_TEXTURE_2D, tex_id)
     glEnable(GL_TEXTURE_2D)
@@ -171,25 +191,66 @@ def draw_textured_quad(tex_id, width, height):
     # Posiciona no topo (0.8 no Y)
     center_y = 0.8
     glBegin(GL_QUADS)
-    glTexCoord2f(0, 0); glVertex2f(-quad_width, center_y - quad_height)
-    glTexCoord2f(1, 0); glVertex2f( quad_width, center_y - quad_height)
-    glTexCoord2f(1, 1); glVertex2f( quad_width, center_y + quad_height)
-    glTexCoord2f(0, 1); glVertex2f(-quad_width, center_y + quad_height)
+    glTexCoord2f(0, 0)
+    glVertex2f(-quad_width, center_y - quad_height)
+    glTexCoord2f(1, 0)
+    glVertex2f(quad_width, center_y - quad_height)
+    glTexCoord2f(1, 1)
+    glVertex2f(quad_width, center_y + quad_height)
+    glTexCoord2f(0, 1)
+    glVertex2f(-quad_width, center_y + quad_height)
     glEnd()
 
     glDisable(GL_TEXTURE_2D)
 
+# TODO : ajustar a dificuldade do jogo, ta muito dificil kk
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
-    velocidade_obstaculos =  (((contador_pontos / 20) + 1)  * 0.01)
+    velocidade_obstaculos = (((contador_pontos / 20) + 1) * 0.01)
 
-def restart_game():
-    global obstacles,  altura,  reiniciar_jogo, contador_pontos
+
+def restart_game(full_reset=False):
+    global obstacles, altura, reiniciar_jogo, contador_pontos, velocidade, vidas, iniciar_jogo, game_over
+
     obstacles = []
     altura = 0
-    contador_pontos = 0
-    draw_character()
+    velocidade = 0
+    iniciar_jogo = False
     reiniciar_jogo = False
+
+    if full_reset:
+        vidas = 5
+        contador_pontos = 0
+        game_over = False
+
+
+def draw_game_over():
+    text = "GAME OVER - Pressione ENTER para reiniciar"
+    tex_id, w, h = create_text_texture(text)
+
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glEnable(GL_TEXTURE_2D)
+
+    aspect_ratio = w / h
+    quad_width = 0.8
+    quad_height = quad_width / aspect_ratio
+    center_y = 0.0
+
+    glBegin(GL_QUADS)
+    glTexCoord2f(0, 0)
+    glVertex2f(-quad_width, center_y - quad_height)
+    glTexCoord2f(1, 0)
+    glVertex2f(quad_width, center_y - quad_height)
+    glTexCoord2f(1, 1)
+    glVertex2f(quad_width, center_y + quad_height)
+    glTexCoord2f(0, 1)
+    glVertex2f(-quad_width, center_y + quad_height)
+    glEnd()
+
+    glDisable(GL_TEXTURE_2D)
+    glDeleteTextures(1, [tex_id])
+
+
 
 def main():
     global contador_pontos, iniciar_jogo, reiniciar_jogo
@@ -208,20 +269,23 @@ def main():
         delta_time = min(delta_time, 0.05)
 
         process_input(window)
-        if iniciar_jogo:
+        if iniciar_jogo and not game_over:
             update_character(delta_time)
             update_obstacles()
             update_difficulty()
 
         draw_obstacles()
         draw_character()
-        text = f"Pontuação: {contador_pontos}"
+        # HUD: pontuação + vidas
+        text = f"Pontuação: {contador_pontos} | Vidas: {vidas}"
         tex_id, w, h = create_text_texture(text)
-
         draw_textured_quad(tex_id, w, h)
         glDeleteTextures(1, [tex_id])
 
-        if check_collision():
+        if game_over:
+            draw_game_over()
+
+        if not game_over and check_collision():
             iniciar_jogo = False
 
         if reiniciar_jogo:
