@@ -27,8 +27,11 @@ OBSTACLE_MAX_MIN_HEIGHT = 0.5
 
 # Variavel usada para começar o jogo, monitora quando é o primeiro clique no espaço do usuário
 iniciar_jogo = False
+reiniciar_jogo = False
 
 contador_pontos = 0
+
+
 
 def init_window(width, height, title):
     if not glfw.init():
@@ -45,12 +48,18 @@ def init_window(width, height, title):
 
 
 def process_input(window):
-    global velocidade, altura, iniciar_jogo
+    # TODO - Revisar problema quando morre mas ainda deixa fica pulando.
+    global velocidade, altura, iniciar_jogo, reiniciar_jogo
     if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
         if not iniciar_jogo:
             iniciar_jogo = True
         velocidade = FORCA_PULO
-
+    if glfw.get_key(window, glfw.KEY_ESCAPE) == glfw.PRESS:
+        if iniciar_jogo:
+            iniciar_jogo = False
+    if glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS:
+        if not reiniciar_jogo and not iniciar_jogo:
+            reiniciar_jogo = True
 
 def update_character(delta_time):
     global velocidade, altura
@@ -167,8 +176,16 @@ def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
     velocidade_obstaculos =  (((contador_pontos / 20) + 1)  * 0.01)
 
+def restart_game():
+    global obstacles,  altura,  reiniciar_jogo, contador_pontos
+    obstacles = []
+    altura = 0
+    contador_pontos = 0
+    draw_character()
+    reiniciar_jogo = False
+
 def main():
-    global contador_pontos
+    global contador_pontos, iniciar_jogo, reiniciar_jogo
     window = init_window(width, height, "Flappy Bird")
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
@@ -184,7 +201,7 @@ def main():
         delta_time = min(delta_time, 0.05)
 
         process_input(window)
-        if(iniciar_jogo):
+        if iniciar_jogo:
             update_character(delta_time)
             update_obstacles()
             update_difficulty()
@@ -198,8 +215,10 @@ def main():
         glDeleteTextures(1, [tex_id])
 
         if check_collision():
-            print("Game Over!")
-            glfw.set_window_should_close(window, True)
+            iniciar_jogo = False
+
+        if reiniciar_jogo:
+            restart_game()
 
         glfw.swap_buffers(window)
         glfw.poll_events()
