@@ -20,7 +20,6 @@ width, height = 800, 600
 obstacles = []
 obstacle_width = 0.1
 
-# TODO - Tentar ir diminuindo o espaço para o esquilo passar conforme o tempo que vai passando
 obstacle_gap = 0.6
 
 OBSTACLE_MAX_MIN_HEIGHT = 0.5
