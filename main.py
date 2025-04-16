@@ -4,6 +4,17 @@ import random
 import time
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
+import pygame
+
+pygame.mixer.init()
+
+# Música de fundo (loop)
+pygame.mixer.music.load("sons/flappy_squirrel_madness.mp3")
+pygame.mixer.music.play(-1)  # -1 = toca em loop
+
+# Efeitos sonoros
+# som_pulo = pygame.mixer.Sound("sons/pulo.wav")
+# som_colisao = pygame.mixer.Sound("sons/colisao.wav")
 
 # Variáveis do jogo
 gravidade = -9.8
@@ -29,8 +40,6 @@ iniciar_jogo = False
 reiniciar_jogo = False
 
 contador_pontos = 0
-
-
 
 def init_window(width, height, title):
     if not glfw.init():
@@ -147,7 +156,6 @@ def create_text_texture(text):
     glBindTexture(GL_TEXTURE_2D, texture_id)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
     return texture_id, img.width, img.height
