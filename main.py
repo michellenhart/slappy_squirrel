@@ -93,6 +93,7 @@ def load_background_texture(filename):
 
     return tex_id
 
+# TODO : adicionar sons de colisão e pulo e ajustar pulo pra aceitar um input por vez
 def process_input(window):
     global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over
 
