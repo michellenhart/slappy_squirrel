@@ -57,6 +57,41 @@ def init_window(width, height, title):
     glfw.swap_interval(1)  # Ativa o V-Sync
     return window
 
+def load_texture(path):
+    image = Image.open(path).convert("RGBA")
+
+    # Rotaciona 90 graus no sentido horário
+    image = image.transpose(Image.Transpose.ROTATE_270)
+
+    # Inverte a imagem verticalmente (necessário para OpenGL)
+    image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+
+    img_data = np.array(image, dtype=np.uint8)
+
+    tex_id = glGenTextures(1)
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RGBA,
+        image.width, image.height, 0,
+        GL_RGBA, GL_UNSIGNED_BYTE, img_data
+    )
+
+    return tex_id
+def load_background_texture(filename):
+    img = Image.open(filename).convert("RGBA")
+    img_data = np.array(img)[::-1]  # Inverte verticalmente
+    tex_id = glGenTextures(1)
+
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+
+    return tex_id
 
 def process_input(window):
     global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over
@@ -84,14 +119,52 @@ def update_character(delta_time):
     velocidade += gravidade * delta_time
 
 
-def draw_character():
+def draw_character(tex_parado, tex_pulo, velocidade_vertical):
+    glBindTexture(GL_TEXTURE_2D, tex_parado if velocidade_vertical <= 0 else tex_pulo)
+    glEnable(GL_TEXTURE_2D)
+
+    largura_personagem = 0.15
+    altura_personagem = 0.15
+
     glBegin(GL_QUADS)
-    glVertex2f(-0.05, -0.05 + altura)
-    glVertex2f(0.05, -0.05 + altura)
-    glVertex2f(0.05, 0.05 + altura)
-    glVertex2f(-0.05, 0.05 + altura)
+    glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
+    glVertex2f(largura_personagem / 2, -altura_personagem / 2 + altura)
+    glVertex2f(largura_personagem / 2, altura_personagem / 2 + altura)
+    glVertex2f(-largura_personagem / 2, altura_personagem / 2 + altura)
+
+    # Coordenadas de textura TROCADAS (para teste de rotação)
+    glTexCoord2f(0, 1)
+    glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
+    glTexCoord2f(0, 0)
+    glVertex2f(largura_personagem / 2, -altura_personagem / 2 + altura)
+    glTexCoord2f(1, 0)
+    glVertex2f(largura_personagem / 2, altura_personagem / 2 + altura)
+    glTexCoord2f(1, 1)
+    glVertex2f(-largura_personagem / 2, altura_personagem / 2 + altura)
     glEnd()
 
+    glDisable(GL_TEXTURE_2D)
+
+def draw_background(tex_id, zoom=1.2, offset_y=-0.2):
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glEnable(GL_TEXTURE_2D)
+
+    # Tamanho da tela com zoom aplicado
+    width = 1.0 * zoom
+    height = 1.0 * zoom
+
+    glBegin(GL_QUADS)
+    glTexCoord2f(0, 0)
+    glVertex2f(-width, -height + offset_y)
+    glTexCoord2f(1, 0)
+    glVertex2f(width, -height + offset_y)
+    glTexCoord2f(1, 1)
+    glVertex2f(width, height + offset_y)
+    glTexCoord2f(0, 1)
+    glVertex2f(-width, height + offset_y)
+    glEnd()
+
+    glDisable(GL_TEXTURE_2D)
 
 def create_obstacle():
     gap_position = random.uniform(-OBSTACLE_MAX_MIN_HEIGHT, OBSTACLE_MAX_MIN_HEIGHT)
@@ -104,28 +177,26 @@ def create_obstacle():
     obstacles.append(obstacle)
 
 
-def draw_obstacles():
+def draw_obstacles(obstacle_tex):
     for obstacle in obstacles:
-        gap_position = obstacle['gap_position']
-        glBegin(GL_QUADS)
-        glVertex2f(obstacle['x'] - obstacle_width, gap_position + obstacle_gap / 2)
-        glVertex2f(obstacle['x'] + obstacle_width, gap_position + obstacle_gap / 2)
-        glVertex2f(obstacle['x'] + obstacle_width, 1.0)
-        glVertex2f(obstacle['x'] - obstacle_width, 1.0)
-        glEnd()
+        x = obstacle['x']
+        gap = obstacle_gap
+        center = obstacle['gap_position']
 
-        glBegin(GL_QUADS)
-        glVertex2f(obstacle['x'] - obstacle_width, -1.0)
-        glVertex2f(obstacle['x'] + obstacle_width, -1.0)
-        glVertex2f(obstacle['x'] + obstacle_width, gap_position - obstacle_gap / 2)
-        glVertex2f(obstacle['x'] - obstacle_width, gap_position - obstacle_gap / 2)
-        glEnd()
+        bottom_top = center - gap / 2
+        top_bottom = center + gap / 2
+
+        # Parte de baixo - INVERTIDA
+        draw_obstacle_with_texture(obstacle_tex, x, -1.0, bottom_top, flip_vertical=True)
+
+        # Parte de cima - NORMAL
+        draw_obstacle_with_texture(obstacle_tex, x, top_bottom, 1.0)
 
 
-def update_obstacles():
+def update_obstacles(delta_time):
     global obstacles, velocidade_obstaculos
     for obstacle in obstacles:
-        obstacle['x'] -= velocidade_obstaculos
+        obstacle['x'] -= velocidade_obstaculos * delta_time
 
         if obstacle['x'] < -1.0 - obstacle_width:
             obstacles.remove(obstacle)
@@ -179,6 +250,41 @@ def create_text_texture(text):
                  0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
     return texture_id, img.width, img.height
 
+def draw_obstacle_with_texture(tex_id, x, bottom, top, largura=0.1, flip_vertical=False):
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glEnable(GL_TEXTURE_2D)
+
+    glBegin(GL_QUADS)
+    if flip_vertical:
+        # Coordenadas do vértice e coordenadas da textura (u, v) - invertido verticalmente
+        glTexCoord2f(0, 1)
+        glVertex2f(x - largura, bottom)
+
+        glTexCoord2f(1, 1)
+        glVertex2f(x + largura, bottom)
+
+        glTexCoord2f(1, 0)
+        glVertex2f(x + largura, top)
+
+        glTexCoord2f(0, 0)
+        glVertex2f(x - largura, top)
+    else:
+        # Coordenadas do vértice e coordenadas da textura (u, v) - normal
+        glTexCoord2f(0, 0)
+        glVertex2f(x - largura, bottom)
+
+        glTexCoord2f(1, 0)
+        glVertex2f(x + largura, bottom)
+
+        glTexCoord2f(1, 1)
+        glVertex2f(x + largura, top)
+
+        glTexCoord2f(0, 1)
+        glVertex2f(x - largura, top)
+    glEnd()
+
+    glDisable(GL_TEXTURE_2D)
+
 
 def draw_textured_quad(tex_id, width, height):
     glBindTexture(GL_TEXTURE_2D, tex_id)
@@ -206,7 +312,8 @@ def draw_textured_quad(tex_id, width, height):
 # TODO : ajustar a dificuldade do jogo, ta muito dificil kk
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
-    velocidade_obstaculos = (((contador_pontos / 20) + 1) * 0.01)
+    velocidade_obstaculos = (((contador_pontos / 100) + 1) * 0.5)
+    print(f"[DEBUG] Velocidade obstáculos: {velocidade_obstaculos:.4f}")
 
 
 def restart_game(full_reset=False):
@@ -255,6 +362,10 @@ def draw_game_over():
 def main():
     global contador_pontos, iniciar_jogo, reiniciar_jogo
     window = init_window(width, height, "Flappy Bird")
+    background_tex = load_background_texture("imgs/background.png")
+    obstacle_tex = load_texture("imgs/obstacles.png")
+    personagem_parado_tex = load_texture("imgs/sqrl_closed.png")
+    personagem_pulo_tex = load_texture("imgs/sqrl_open.png")
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
     glEnable(GL_BLEND)
@@ -271,11 +382,12 @@ def main():
         process_input(window)
         if iniciar_jogo and not game_over:
             update_character(delta_time)
-            update_obstacles()
+            update_obstacles(delta_time)
             update_difficulty()
 
-        draw_obstacles()
-        draw_character()
+        draw_background(background_tex, zoom=1.2, offset_y=-0.3)
+        draw_obstacles(obstacle_tex)
+        draw_character(personagem_parado_tex, personagem_pulo_tex, velocidade)
         # HUD: pontuação + vidas
         text = f"Pontuação: {contador_pontos} | Vidas: {vidas}"
         tex_id, w, h = create_text_texture(text)
