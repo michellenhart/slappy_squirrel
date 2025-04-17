@@ -123,8 +123,8 @@ def draw_character(tex_parado, tex_pulo, velocidade_vertical):
     glBindTexture(GL_TEXTURE_2D, tex_parado if velocidade_vertical <= 0 else tex_pulo)
     glEnable(GL_TEXTURE_2D)
 
-    largura_personagem = 0.15
-    altura_personagem = 0.15
+    largura_personagem = 0.18
+    altura_personagem = 0.12
 
     glBegin(GL_QUADS)
     glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
@@ -370,6 +370,7 @@ def main():
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     tempo_anterior = time.time()
+    glClearColor(0.95, 0.5, 0.25, 1.0)
 
     glfw.set_key_callback(window, key_callback)
 
