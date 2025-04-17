@@ -79,7 +79,9 @@ def load_texture(path):
         GL_RGBA, GL_UNSIGNED_BYTE, img_data
     )
 
-    return tex_id
+    return tex_id, image.height
+
+
 def load_background_texture(filename):
     img = Image.open(filename).convert("RGBA")
     img_data = np.array(img)[::-1]  # Inverte verticalmente
@@ -177,7 +179,7 @@ def create_obstacle():
     obstacles.append(obstacle)
 
 
-def draw_obstacles(obstacle_tex):
+def draw_obstacles(obstacle_tex, height=None):
     for obstacle in obstacles:
         x = obstacle['x']
         gap = obstacle_gap
@@ -362,9 +364,9 @@ def main():
     global contador_pontos, iniciar_jogo, reiniciar_jogo
     window = init_window(width, height, "Flappy Bird")
     background_tex = load_background_texture("imgs/background.png")
-    obstacle_tex = load_texture("imgs/obstacles.png")
-    personagem_parado_tex = load_texture("imgs/sqrl_closed.png")
-    personagem_pulo_tex = load_texture("imgs/sqrl_open.png")
+    obstacle_tex = load_texture("imgs/obstacle-2.png")
+    personagem_parado_tex = load_texture("imgs/sqrl_closed.png")[0]
+    personagem_pulo_tex = load_texture("imgs/sqrl_open.png")[0]
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
     glEnable(GL_BLEND)
@@ -389,7 +391,7 @@ def main():
             update_difficulty()
 
         draw_background(background_tex, zoom=1.2, offset_y=-0.3)
-        draw_obstacles(obstacle_tex)
+        draw_obstacles(obstacle_tex[0], obstacle_tex[1])
         draw_character(personagem_parado_tex, personagem_pulo_tex, velocidade)
         # HUD: pontuação + vidas
         text = f"Pontuação: {contador_pontos} | Vidas: {vidas}"
