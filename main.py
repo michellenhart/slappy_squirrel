@@ -22,7 +22,7 @@ velocidade = 0.0
 altura = 0.0
 velocidade_obstaculos = 0.01
 
-FORCA_PULO = 1.5
+FORCA_PULO = 2
 
 # Tamanho da tela
 width, height = 800, 600
@@ -93,21 +93,20 @@ def load_background_texture(filename):
 
     return tex_id
 
-# TODO : adicionar sons de colisão e pulo e ajustar pulo pra aceitar um input por vez
-def process_input(window):
+# TODO : adicionar sons de colisão e pulo
+def key_callback(window, key, scancode, action, mods):
     global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over
 
-    if glfw.get_key(window, glfw.KEY_SPACE) == glfw.PRESS:
+    if action == glfw.PRESS and key == glfw.KEY_SPACE:
         if not iniciar_jogo and not reiniciar_jogo and not game_over:
             iniciar_jogo = True
         elif iniciar_jogo:
             velocidade = FORCA_PULO
 
-    if glfw.get_key(window, glfw.KEY_ESCAPE) == glfw.PRESS:
-        if iniciar_jogo:
-            iniciar_jogo = False
+    if  action == glfw.PRESS and  key == glfw.KEY_ESCAPE:
+        iniciar_jogo = not iniciar_jogo
 
-    if glfw.get_key(window, glfw.KEY_ENTER) == glfw.PRESS:
+    if  action == glfw.PRESS and key == glfw.KEY_ENTER:
         if game_over:
             restart_game(full_reset=True)
 
@@ -310,10 +309,9 @@ def draw_textured_quad(tex_id, width, height):
 
     glDisable(GL_TEXTURE_2D)
 
-# TODO : ajustar a dificuldade do jogo, ta muito dificil kk
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
-    velocidade_obstaculos = (((contador_pontos / 100) + 1) * 0.5)
+    velocidade_obstaculos = (((contador_pontos / 50) + 1) * 0.5)
     print(f"[DEBUG] Velocidade obstáculos: {velocidade_obstaculos:.4f}")
 
 
@@ -372,6 +370,9 @@ def main():
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     tempo_anterior = time.time()
+
+    glfw.set_key_callback(window, key_callback)
+
     while not glfw.window_should_close(window):
         glClear(GL_COLOR_BUFFER_BIT)
 
@@ -380,7 +381,7 @@ def main():
         tempo_anterior = tempo_atual
         delta_time = min(delta_time, 0.05)
 
-        process_input(window)
+
         if iniciar_jogo and not game_over:
             update_character(delta_time)
             update_obstacles(delta_time)
