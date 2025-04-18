@@ -10,7 +10,9 @@ pygame.mixer.init()
 
 # Música de fundo (loop)
 pygame.mixer.music.load("sons/flappy_squirrel_madness.mp3")
+pygame.mixer.music.set_volume(0.01)
 pygame.mixer.music.play(-1)  # -1 = toca em loop
+
 
 # Efeitos sonoros
 # som_pulo = pygame.mixer.Sound("sons/pulo.wav")
@@ -21,6 +23,7 @@ gravidade = -9.8
 velocidade = 0.0
 altura = 0.0
 velocidade_obstaculos = 0.01
+
 
 FORCA_PULO = 2
 
@@ -147,22 +150,24 @@ def draw_character(tex_parado, tex_pulo, velocidade_vertical):
 
     glDisable(GL_TEXTURE_2D)
 
-def draw_background(tex_id, zoom=1.2, offset_y=-0.2):
+def draw_background(tex_id, zoom=1.2, offset_y=-0.2, scroll_offset=0.0):
     glBindTexture(GL_TEXTURE_2D, tex_id)
     glEnable(GL_TEXTURE_2D)
 
-    # Tamanho da tela com zoom aplicado
     width = 1.0 * zoom
     height = 1.0 * zoom
 
     glBegin(GL_QUADS)
-    glTexCoord2f(0, 0)
+    glTexCoord2f(0.0 + scroll_offset, 0)
     glVertex2f(-width, -height + offset_y)
-    glTexCoord2f(1, 0)
+
+    glTexCoord2f(1.0 + scroll_offset, 0)
     glVertex2f(width, -height + offset_y)
-    glTexCoord2f(1, 1)
+
+    glTexCoord2f(1.0 + scroll_offset, 1)
     glVertex2f(width, height + offset_y)
-    glTexCoord2f(0, 1)
+
+    glTexCoord2f(0.0 + scroll_offset, 1)
     glVertex2f(-width, height + offset_y)
     glEnd()
 
@@ -367,6 +372,7 @@ def main():
     obstacle_tex = load_texture("imgs/obstacle-2.png")
     personagem_parado_tex = load_texture("imgs/sqrl_closed.png")[0]
     personagem_pulo_tex = load_texture("imgs/sqrl_open.png")[0]
+    background_offset = 0.0
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
     glEnable(GL_BLEND)
@@ -383,14 +389,18 @@ def main():
         delta_time = tempo_atual - tempo_anterior
         tempo_anterior = tempo_atual
         delta_time = min(delta_time, 0.05)
+        print(f"[DEBUG] Offset do background: {background_offset:.4f}")
+        if background_offset > 1.0:
+            background_offset -= 1.0
 
 
         if iniciar_jogo and not game_over:
             update_character(delta_time)
             update_obstacles(delta_time)
             update_difficulty()
+            background_offset += (velocidade_obstaculos * delta_time) / 15
 
-        draw_background(background_tex, zoom=1.2, offset_y=-0.3)
+        draw_background(background_tex, zoom=1.2, offset_y=-0.3, scroll_offset=background_offset)
         draw_obstacles(obstacle_tex[0], obstacle_tex[1])
         draw_character(personagem_parado_tex, personagem_pulo_tex, velocidade)
         # HUD: pontuação + vidas
