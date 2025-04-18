@@ -260,6 +260,8 @@ def create_text_texture(text):
 def draw_obstacle_with_texture(tex_id, x, bottom, top, largura=0.1, flip_vertical=False):
     glBindTexture(GL_TEXTURE_2D, tex_id)
     glEnable(GL_TEXTURE_2D)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
 
     glBegin(GL_QUADS)
     if flip_vertical:
