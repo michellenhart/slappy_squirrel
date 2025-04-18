@@ -23,6 +23,7 @@ gravidade = -9.8
 velocidade = 0.0
 altura = 0.0
 velocidade_obstaculos = 0.01
+angulo_personagem = 0.0
 
 
 FORCA_PULO = 2
@@ -118,26 +119,53 @@ def key_callback(window, key, scancode, action, mods):
 
 
 def update_character(delta_time):
-    global velocidade, altura
+    global velocidade, altura, angulo_personagem
 
     altura += velocidade * delta_time
     velocidade += gravidade * delta_time
 
+    # Lógica para a rotação baseada na velocidade vertical
+    if velocidade > 0:  # Subindo
+        angulo_alvo = 20.0  # Rotacionar um pouco para cima
+    elif velocidade < -2.0: # Caindo
+        angulo_alvo = -30.0 # Rotacionar um pouco para baixo
+    else:
+        angulo_alvo = 0.0   # Voltar à rotação zero
+
+    # Suavizar a transição da rotação
+    taxa_rotacao = 80.0 * delta_time  # Ajuste a velocidade da rotação
+    if angulo_personagem < angulo_alvo:
+        angulo_personagem = min(angulo_personagem + taxa_rotacao, angulo_alvo)
+    elif angulo_personagem > angulo_alvo:
+        angulo_personagem = max(angulo_personagem - taxa_rotacao, angulo_alvo)
+
+    # Limitar a rotação para evitar giros completos
+    angulo_personagem = max(-15.0, min(15.0, angulo_personagem))
+
 
 def draw_character(tex_parado, tex_pulo, velocidade_vertical):
+    global altura, angulo_personagem
+
     glBindTexture(GL_TEXTURE_2D, tex_parado if velocidade_vertical <= 0 else tex_pulo)
     glEnable(GL_TEXTURE_2D)
 
     largura_personagem = 0.18
     altura_personagem = 0.12
 
-    glBegin(GL_QUADS)
-    glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
-    glVertex2f(largura_personagem / 2, -altura_personagem / 2 + altura)
-    glVertex2f(largura_personagem / 2, altura_personagem / 2 + altura)
-    glVertex2f(-largura_personagem / 2, altura_personagem / 2 + altura)
+    # Salvar a matriz de transformação atual
+    glPushMatrix()
 
-    # Coordenadas de textura TROCADAS (para teste de rotação)
+    # Mover para o centro do personagem
+    glTranslatef(0.0, altura, 0.0)
+
+    # Rotacionar
+    glRotatef(angulo_personagem, 0.0, 0.0, 1.0)  # Rotacionar em torno do eixo Z
+
+    # Mover de volta
+    glTranslatef(0.0, -altura, 0.0)
+
+    glBegin(GL_QUADS)
+    # Coordenadas de textura (TROCADAS para possivelmente corrigir a orientação da imagem)
     glTexCoord2f(0, 1)
     glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
     glTexCoord2f(0, 0)
@@ -147,6 +175,9 @@ def draw_character(tex_parado, tex_pulo, velocidade_vertical):
     glTexCoord2f(1, 1)
     glVertex2f(-largura_personagem / 2, altura_personagem / 2 + altura)
     glEnd()
+
+    # Restaurar a matriz de transformação anterior
+    glPopMatrix()
 
     glDisable(GL_TEXTURE_2D)
 
@@ -391,7 +422,6 @@ def main():
         delta_time = tempo_atual - tempo_anterior
         tempo_anterior = tempo_atual
         delta_time = min(delta_time, 0.05)
-        print(f"[DEBUG] Offset do background: {background_offset:.4f}")
         if background_offset > 1.0:
             background_offset -= 1.0
 
@@ -401,6 +431,7 @@ def main():
             update_obstacles(delta_time)
             update_difficulty()
             background_offset += (velocidade_obstaculos * delta_time) / 15
+            print(f"[DEBUG] Offset do background: {background_offset:.4f}")
 
         draw_background(background_tex, zoom=1.2, offset_y=-0.3, scroll_offset=background_offset)
         draw_obstacles(obstacle_tex[0], obstacle_tex[1])
