@@ -47,6 +47,10 @@ game_over = False
 contador_pontos = 0
 vidas = 5
 
+vidas_extras = []
+tempo_para_proxima_vida = 5.0  # segundos entre possíveis aparições
+tempo_decorrido_vida = 0.0
+
 
 def init_window(width, height, title):
     if not glfw.init():
@@ -244,7 +248,7 @@ def update_obstacles(delta_time):
 
 
 def check_collision():
-    global altura, contador_pontos, velocidade_obstaculos, vidas, reiniciar_jogo, game_over
+    global altura, contador_pontos, velocidade_obstaculos, vidas, reiniciar_jogo, game_over, vidas_extras
 
     if altura < -1.1:
         vidas -= 1
@@ -263,12 +267,74 @@ def check_collision():
                     game_over = True
                 else:
                     reiniciar_jogo = True
+
+                if reiniciar_jogo:
+                    vidas_extras = []
+
                 return True
             else:
                 if not obstacle['counted']:
                     obstacle['counted'] = True
                     contador_pontos += 1
+
+    for vida in vidas_extras:
+        if not vida['coletada'] and abs(vida['x']) < 0.1 and abs(vida['y'] - altura) < 0.1:
+            vida['coletada'] = True
+            vidas += 1
+
     return False
+
+
+def update_vidas_extras(delta_time):
+    global vidas_extras, tempo_decorrido_vida, tempo_para_proxima_vida
+
+    tempo_decorrido_vida += delta_time
+
+    # Aparecimento aleatório após certo tempo
+    if tempo_decorrido_vida > tempo_para_proxima_vida:
+        tempo_decorrido_vida = 0
+        if random.random() < 0.5:  # 50% de chance de aparecer uma vida
+            x = 1.0
+            if obstacles[-1] == 1.0:
+                x += 0.1
+
+            nova_vida = {
+                'x': x,
+                'y': random.uniform(-0.8, 0.8),
+                'coletada': False
+            }
+            vidas_extras.append(nova_vida)
+
+    for vida in vidas_extras:
+        vida['x'] -= velocidade_obstaculos * delta_time
+
+    # Remove vidas fora da tela
+    vidas_extras = [vida for vida in vidas_extras if vida['x'] > -1.2]
+
+
+def draw_vidas_extras(tex_id):
+    glBindTexture(GL_TEXTURE_2D, tex_id)
+    glEnable(GL_TEXTURE_2D)
+
+    for vida in vidas_extras:
+        if not vida['coletada']:
+            x = vida['x']
+            y = vida['y']
+            largura = 0.08
+            altura_vida = 0.08
+
+            glBegin(GL_QUADS)
+            glTexCoord2f(0, 0)
+            glVertex2f(x - largura/2, y - altura_vida/2)
+            glTexCoord2f(1, 0)
+            glVertex2f(x + largura/2, y - altura_vida/2)
+            glTexCoord2f(1, 1)
+            glVertex2f(x + largura/2, y + altura_vida/2)
+            glTexCoord2f(0, 1)
+            glVertex2f(x - largura/2, y + altura_vida/2)
+            glEnd()
+
+    glDisable(GL_TEXTURE_2D)
 
 
 font = ImageFont.truetype("verdana.ttf", 32)  # Use uma fonte .ttf disponível no seu sistema
@@ -287,6 +353,7 @@ def create_text_texture(text):
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
     return texture_id, img.width, img.height
+
 
 def draw_obstacle_with_texture(tex_id, x, bottom, top, largura=0.1, flip_vertical=False):
     glBindTexture(GL_TEXTURE_2D, tex_id)
@@ -349,6 +416,7 @@ def draw_textured_quad(tex_id, width, height):
 
     glDisable(GL_TEXTURE_2D)
 
+
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
     velocidade_obstaculos = (((contador_pontos / 50) + 1) * 0.5)
@@ -405,6 +473,7 @@ def main():
     obstacle_tex = load_texture("imgs/obstacle-2.png")
     personagem_parado_tex = load_texture("imgs/sqrl_closed.png")[0]
     personagem_pulo_tex = load_texture("imgs/sqrl_open.png")[0]
+    vida_tex = load_texture("imgs/life.png")[0]
     background_offset = 0.0
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
@@ -425,17 +494,18 @@ def main():
         if background_offset > 1.0:
             background_offset -= 1.0
 
-
         if iniciar_jogo and not game_over:
             update_character(delta_time)
             update_obstacles(delta_time)
             update_difficulty()
+            update_vidas_extras(delta_time)
             background_offset += (velocidade_obstaculos * delta_time) / 15
             print(f"[DEBUG] Offset do background: {background_offset:.4f}")
 
         draw_background(background_tex, zoom=1.2, offset_y=-0.3, scroll_offset=background_offset)
         draw_obstacles(obstacle_tex[0], obstacle_tex[1])
         draw_character(personagem_parado_tex, personagem_pulo_tex, velocidade)
+        draw_vidas_extras(vida_tex)
         # HUD: pontuação + vidas
         text = f"Pontuação: {contador_pontos} | Vidas: {vidas}"
         tex_id, w, h = create_text_texture(text)
