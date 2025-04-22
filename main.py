@@ -324,13 +324,13 @@ def draw_vidas_extras(tex_id):
             altura_vida = 0.08
 
             glBegin(GL_QUADS)
-            glTexCoord2f(0, 0)
+            glTexCoord2f(0,1)
             glVertex2f(x - largura/2, y - altura_vida/2)
-            glTexCoord2f(1, 0)
+            glTexCoord2f(0, 0)
             glVertex2f(x + largura/2, y - altura_vida/2)
-            glTexCoord2f(1, 1)
+            glTexCoord2f(1, 0)
             glVertex2f(x + largura/2, y + altura_vida/2)
-            glTexCoord2f(0, 1)
+            glTexCoord2f(1, 1)
             glVertex2f(x - largura/2, y + altura_vida/2)
             glEnd()
 
@@ -468,7 +468,7 @@ def draw_game_over():
 
 def main():
     global contador_pontos, iniciar_jogo, reiniciar_jogo
-    window = init_window(width, height, "Flappy Bird")
+    window = init_window(width, height, "Slappy Squirrel")
     background_tex = load_background_texture("imgs/background.png")
     obstacle_tex = load_texture("imgs/obstacle-2.png")
     personagem_parado_tex = load_texture("imgs/sqrl_closed.png")[0]
