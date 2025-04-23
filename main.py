@@ -5,18 +5,29 @@ import time
 from PIL import Image, ImageFont, ImageDraw
 import numpy as np
 import pygame
+import sys
+import os
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS  # PyInstaller usa isso
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 pygame.mixer.init()
 
 # Música de fundo (loop)
-pygame.mixer.music.load("sons/flappy_squirrel_madness.mp3")
+pygame.mixer.music.load(resource_path("sons/flappy_squirrel_madness.mp3"))
 pygame.mixer.music.set_volume(0.05)
 pygame.mixer.music.play(-1)  # -1 = toca em loop
 
 # Efeitos sonoros
-som_pulo = pygame.mixer.Sound("sons/pulo.mp3")
+som_pulo = pygame.mixer.Sound(resource_path("sons/pulo.mp3"))
 som_pulo.set_volume(0.2)
-som_colisao = pygame.mixer.Sound("sons/colisao.mp3")
+som_colisao = pygame.mixer.Sound(resource_path("sons/colisao.mp3"))
 som_colisao.set_volume(0.2)
 
 # Variáveis do jogo
@@ -57,6 +68,9 @@ vidas = 1
 vidas_extras = []
 tempo_para_proxima_vida = 5.0  # segundos entre possíveis aparições
 tempo_decorrido_vida = 0.0
+
+
+
 
 
 def init_window(width, height, title):
@@ -274,6 +288,8 @@ def check_collision():
         vidas -= 1
         if vidas <= 0:
             game_over = True
+            pygame.mixer.music.stop()
+            som_colisao.play()
 
         else:
             reiniciar_jogo = True
@@ -527,11 +543,11 @@ def draw_game_over():
 def main():
     global contador_pontos, iniciar_jogo, reiniciar_jogo
     window = init_window(width, height, "Slappy Squirrel")
-    background_tex = load_background_texture("imgs/background.png")
-    obstacle_tex = load_texture("imgs/obstacle-2.png")
-    personagem_parado_tex = load_texture("imgs/sqrl_closed.png")[0]
-    personagem_pulo_tex = load_texture("imgs/sqrl_open.png")[0]
-    vida_tex = load_texture("imgs/life.png")[0]
+    background_tex = load_background_texture(resource_path("imgs/background.png"))
+    obstacle_tex = load_texture(resource_path("imgs/obstacle-2.png"))
+    personagem_parado_tex = load_texture(resource_path("imgs/sqrl_closed.png"))[0]
+    personagem_pulo_tex = load_texture(resource_path("imgs/sqrl_open.png"))[0]
+    vida_tex = load_texture(resource_path("imgs/life.png"))[0]
     background_offset = 0.0
 
     glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)  # Define a projeção ortográfica
