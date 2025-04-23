@@ -274,6 +274,8 @@ def check_collision():
         vidas -= 1
         if vidas <= 0:
             game_over = True
+            pygame.mixer.music.stop()
+            som_colisao.play()
 
         else:
             reiniciar_jogo = True
@@ -472,7 +474,6 @@ def draw_textured_quad(tex_id, width, height):
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
     velocidade_obstaculos = min((((contador_pontos / 50) + 1) * 0.5), 1.8)
-    print(f"[DEBUG] Velocidade obstáculos: {velocidade_obstaculos:.4f}")
 
 
 def restart_game(full_reset=False, vidas_iniciais=vidas):
@@ -558,7 +559,6 @@ def main():
             update_vidas_extras(delta_time)
             update_difficulty()
             background_offset += (velocidade_obstaculos * delta_time) / 15
-            print(f"[DEBUG] Offset do background: {background_offset:.4f}")
 
         draw_background(background_tex, zoom=1.2, offset_y=-0.3, scroll_offset=background_offset)
         draw_obstacles(obstacle_tex[0], obstacle_tex[1])
