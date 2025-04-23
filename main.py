@@ -10,13 +10,14 @@ pygame.mixer.init()
 
 # Música de fundo (loop)
 pygame.mixer.music.load("sons/flappy_squirrel_madness.mp3")
-pygame.mixer.music.set_volume(0.01)
+pygame.mixer.music.set_volume(0.05)
 pygame.mixer.music.play(-1)  # -1 = toca em loop
 
-
 # Efeitos sonoros
-# som_pulo = pygame.mixer.Sound("sons/pulo.wav")
-# som_colisao = pygame.mixer.Sound("sons/colisao.wav")
+som_pulo = pygame.mixer.Sound("sons/pulo.mp3")
+som_pulo.set_volume(0.2)
+som_colisao = pygame.mixer.Sound("sons/colisao.mp3")
+som_colisao.set_volume(0.2)
 
 # Variáveis do jogo
 gravidade = -9.8
@@ -24,9 +25,15 @@ velocidade = 0.0
 altura = 0.0
 velocidade_obstaculos = 0.01
 angulo_personagem = 0.0
-
-
 FORCA_PULO = 2
+
+# Variáveis de animação de morte
+animando_morte = False
+altura_morte = 0.0
+velocidade_morte = -0.5
+angulo_morte = 0.0
+velocidade_rotacao_morte = 360.0
+morte_finalizada = False
 
 # Tamanho da tela
 width, height = 800, 600
@@ -45,7 +52,7 @@ reiniciar_jogo = False
 game_over = False
 
 contador_pontos = 0
-vidas = 5
+vidas = 1
 
 vidas_extras = []
 tempo_para_proxima_vida = 5.0  # segundos entre possíveis aparições
@@ -64,6 +71,7 @@ def init_window(width, height, title):
     glfw.make_context_current(window)
     glfw.swap_interval(1)  # Ativa o V-Sync
     return window
+
 
 def load_texture(path):
     image = Image.open(path).convert("RGBA")
@@ -103,23 +111,31 @@ def load_background_texture(filename):
 
     return tex_id
 
-# TODO : adicionar sons de colisão e pulo
+
 def key_callback(window, key, scancode, action, mods):
-    global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over
+    global velocidade, altura, iniciar_jogo, reiniciar_jogo, game_over, \
+        animando_morte, altura_morte, angulo_morte, angulo_personagem
 
     if action == glfw.PRESS and key == glfw.KEY_SPACE:
         if not iniciar_jogo and not reiniciar_jogo and not game_over:
             iniciar_jogo = True
         elif iniciar_jogo:
+            pygame.mixer.Sound.play(som_pulo)
             velocidade = FORCA_PULO
 
-    if  action == glfw.PRESS and  key == glfw.KEY_ESCAPE:
+    if action == glfw.PRESS and key == glfw.KEY_ESCAPE:
         iniciar_jogo = not iniciar_jogo
 
-    if  action == glfw.PRESS and key == glfw.KEY_ENTER:
+    if action == glfw.PRESS and key == glfw.KEY_ENTER:
         if game_over:
+            som_colisao.stop()
+            pygame.mixer.music.play(-1)
             restart_game(full_reset=True)
-
+            animando_morte = False
+            altura = 0.0
+            altura_morte = 0.0
+            angulo_morte = 0.0
+            angulo_personagem = 0.0
 
 
 def update_character(delta_time):
@@ -131,10 +147,10 @@ def update_character(delta_time):
     # Lógica para a rotação baseada na velocidade vertical
     if velocidade > 0:  # Subindo
         angulo_alvo = 20.0  # Rotacionar um pouco para cima
-    elif velocidade < -2.0: # Caindo
-        angulo_alvo = -30.0 # Rotacionar um pouco para baixo
+    elif velocidade < -2.0:  # Caindo
+        angulo_alvo = -30.0  # Rotacionar um pouco para baixo
     else:
-        angulo_alvo = 0.0   # Voltar à rotação zero
+        angulo_alvo = 0.0  # Voltar à rotação zero
 
     # Suavizar a transição da rotação
     taxa_rotacao = 80.0 * delta_time  # Ajuste a velocidade da rotação
@@ -148,42 +164,45 @@ def update_character(delta_time):
 
 
 def draw_character(tex_parado, tex_pulo, velocidade_vertical):
-    global altura, angulo_personagem
+    global altura, angulo_personagem, animando_morte, altura_morte, angulo_morte
 
-    glBindTexture(GL_TEXTURE_2D, tex_parado if velocidade_vertical <= 0 else tex_pulo)
+    # Define posição e rotação com base na animação de morte
+    if animando_morte:
+        y_pos = altura_morte
+        rot = angulo_morte
+    else:
+        y_pos = altura
+        rot = angulo_personagem
+
+    # Seleciona a textura de pulo ou parado com base na velocidade, mas mantém parado durante a animação de morte
+    textura = tex_parado if animando_morte or velocidade_vertical <= 0 else tex_pulo
+    glBindTexture(GL_TEXTURE_2D, textura)
     glEnable(GL_TEXTURE_2D)
 
     largura_personagem = 0.18
     altura_personagem = 0.12
 
-    # Salvar a matriz de transformação atual
     glPushMatrix()
 
-    # Mover para o centro do personagem
-    glTranslatef(0.0, altura, 0.0)
-
-    # Rotacionar
-    glRotatef(angulo_personagem, 0.0, 0.0, 1.0)  # Rotacionar em torno do eixo Z
-
-    # Mover de volta
-    glTranslatef(0.0, -altura, 0.0)
+    # Aplica transformações com base na animação de morte ou estado normal
+    glTranslatef(0.0, y_pos, 0.0)
+    glRotatef(rot, 0.0, 0.0, 1.0)
+    glTranslatef(0.0, -y_pos, 0.0)
 
     glBegin(GL_QUADS)
-    # Coordenadas de textura (TROCADAS para possivelmente corrigir a orientação da imagem)
     glTexCoord2f(0, 1)
-    glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + altura)
+    glVertex2f(-largura_personagem / 2, -altura_personagem / 2 + y_pos)
     glTexCoord2f(0, 0)
-    glVertex2f(largura_personagem / 2, -altura_personagem / 2 + altura)
+    glVertex2f(largura_personagem / 2, -altura_personagem / 2 + y_pos)
     glTexCoord2f(1, 0)
-    glVertex2f(largura_personagem / 2, altura_personagem / 2 + altura)
+    glVertex2f(largura_personagem / 2, altura_personagem / 2 + y_pos)
     glTexCoord2f(1, 1)
-    glVertex2f(-largura_personagem / 2, altura_personagem / 2 + altura)
+    glVertex2f(-largura_personagem / 2, altura_personagem / 2 + y_pos)
     glEnd()
 
-    # Restaurar a matriz de transformação anterior
     glPopMatrix()
-
     glDisable(GL_TEXTURE_2D)
+
 
 def draw_background(tex_id, zoom=1.2, offset_y=-0.2, scroll_offset=0.0):
     glBindTexture(GL_TEXTURE_2D, tex_id)
@@ -208,10 +227,11 @@ def draw_background(tex_id, zoom=1.2, offset_y=-0.2, scroll_offset=0.0):
 
     glDisable(GL_TEXTURE_2D)
 
+
 def create_obstacle():
     gap_position = random.uniform(-OBSTACLE_MAX_MIN_HEIGHT, OBSTACLE_MAX_MIN_HEIGHT)
     obstacle = {
-        'x': 1.0,  # Inicia à direita da tela
+        'x': 1.2,  # Inicia à direita da tela, fora dela
         'gap_position': gap_position,
         'passed': False,
         'counted': False
@@ -254,6 +274,7 @@ def check_collision():
         vidas -= 1
         if vidas <= 0:
             game_over = True
+
         else:
             reiniciar_jogo = True
         return True
@@ -265,6 +286,13 @@ def check_collision():
                 vidas -= 1
                 if vidas <= 0:
                     game_over = True
+                    pygame.mixer.music.stop()
+                    som_colisao.play()
+                    # Iniciar animação de morte
+                    global animando_morte, altura_morte, angulo_morte
+                    animando_morte = True
+                    altura_morte = altura
+                    angulo_morte = 0.0
                 else:
                     reiniciar_jogo = True
 
@@ -285,30 +313,54 @@ def check_collision():
     return False
 
 
+def animar_morte(delta_time):
+    global altura_morte, angulo_morte
+
+    altura_morte += velocidade_morte * delta_time
+    angulo_morte += velocidade_rotacao_morte * delta_time
+
+
 def update_vidas_extras(delta_time):
     global vidas_extras, tempo_decorrido_vida, tempo_para_proxima_vida
 
     tempo_decorrido_vida += delta_time
 
-    # Aparecimento aleatório após certo tempo
     if tempo_decorrido_vida > tempo_para_proxima_vida:
         tempo_decorrido_vida = 0
-        if random.random() < 0.5:  # 50% de chance de aparecer uma vida
-            x = 1.0
-            if obstacles[-1] == 1.0:
-                x += 0.1
+        if random.random() < 0.5:
+            x_spawn = 1.0
+            altura_vida = 0.1  # Altura total da vida
+            margem_segura = 0.05  # Margem para evitar bordas dos troncos
 
-            nova_vida = {
-                'x': x,
-                'y': random.uniform(-0.8, 0.8),
-                'coletada': False
-            }
-            vidas_extras.append(nova_vida)
+            obstaculo_proximo = None
+            for obs in obstacles:
+                if abs(obs['x'] - x_spawn) < 0.15:
+                    obstaculo_proximo = obs
+                    break
+
+            if obstaculo_proximo:
+                centro_gap = obstaculo_proximo['gap_position']
+                limite_inferior = centro_gap - obstacle_gap / 2 + altura_vida / 2 + margem_segura
+                limite_superior = centro_gap + obstacle_gap / 2 - altura_vida / 2 - margem_segura
+
+                if limite_superior > limite_inferior:
+                    y = random.uniform(limite_inferior, limite_superior)
+                    vidas_extras.append({
+                        'x': x_spawn,
+                        'y': y,
+                        'coletada': False
+                    })
+            else:
+                y = random.uniform(-0.9, 0.9)
+                vidas_extras.append({
+                    'x': x_spawn,
+                    'y': y,
+                    'coletada': False
+                })
 
     for vida in vidas_extras:
         vida['x'] -= velocidade_obstaculos * delta_time
 
-    # Remove vidas fora da tela
     vidas_extras = [vida for vida in vidas_extras if vida['x'] > -1.2]
 
 
@@ -321,17 +373,17 @@ def draw_vidas_extras(tex_id):
             x = vida['x']
             y = vida['y']
             largura = 0.08
-            altura_vida = 0.08
+            altura_vida = 0.1
 
             glBegin(GL_QUADS)
-            glTexCoord2f(0,1)
-            glVertex2f(x - largura/2, y - altura_vida/2)
+            glTexCoord2f(0, 1)
+            glVertex2f(x - largura / 2, y - altura_vida / 2)
             glTexCoord2f(0, 0)
-            glVertex2f(x + largura/2, y - altura_vida/2)
+            glVertex2f(x + largura / 2, y - altura_vida / 2)
             glTexCoord2f(1, 0)
-            glVertex2f(x + largura/2, y + altura_vida/2)
+            glVertex2f(x + largura / 2, y + altura_vida / 2)
             glTexCoord2f(1, 1)
-            glVertex2f(x - largura/2, y + altura_vida/2)
+            glVertex2f(x - largura / 2, y + altura_vida / 2)
             glEnd()
 
     glDisable(GL_TEXTURE_2D)
@@ -419,21 +471,28 @@ def draw_textured_quad(tex_id, width, height):
 
 def update_difficulty():
     global velocidade_obstaculos, obstacle_gap, contador_pontos
-    velocidade_obstaculos = (((contador_pontos / 50) + 1) * 0.5)
+    velocidade_obstaculos = min((((contador_pontos / 50) + 1) * 0.5), 1.8)
     print(f"[DEBUG] Velocidade obstáculos: {velocidade_obstaculos:.4f}")
 
 
-def restart_game(full_reset=False):
-    global obstacles, altura, reiniciar_jogo, contador_pontos, velocidade, vidas, iniciar_jogo, game_over
+def restart_game(full_reset=False, vidas_iniciais=vidas):
+    global obstacles, altura, reiniciar_jogo, contador_pontos, velocidade, vidas, iniciar_jogo, \
+        game_over, vidas_extras, angulo_personagem, animando_morte, altura_morte, angulo_morte, morte_finalizada
 
     obstacles = []
     altura = 0
     velocidade = 0
     iniciar_jogo = False
     reiniciar_jogo = False
+    vidas_extras = []
+    angulo_personagem = 0.0
+    animando_morte = False
+    altura_morte = 0.0
+    angulo_morte = 0.0
+    morte_finalizada = False
 
     if full_reset:
-        vidas = 5
+        vidas = vidas_iniciais
         contador_pontos = 0
         game_over = False
 
@@ -463,7 +522,6 @@ def draw_game_over():
 
     glDisable(GL_TEXTURE_2D)
     glDeleteTextures(1, [tex_id])
-
 
 
 def main():
@@ -497,8 +555,8 @@ def main():
         if iniciar_jogo and not game_over:
             update_character(delta_time)
             update_obstacles(delta_time)
-            update_difficulty()
             update_vidas_extras(delta_time)
+            update_difficulty()
             background_offset += (velocidade_obstaculos * delta_time) / 15
             print(f"[DEBUG] Offset do background: {background_offset:.4f}")
 
@@ -520,6 +578,9 @@ def main():
 
         if reiniciar_jogo:
             restart_game()
+
+        if animando_morte:
+            animar_morte(delta_time)
 
         glfw.swap_buffers(window)
         glfw.poll_events()
